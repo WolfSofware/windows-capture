@@ -72,7 +72,7 @@ version = "1.10.0"
 version = "2.0.12"
 
 [dependencies.windows]
-version = "0.61.3"
+version = "0.62.0"
 features = [
     "Foundation_Metadata",
     "Foundation",
