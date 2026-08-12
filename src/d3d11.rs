@@ -1,7 +1,10 @@
 use windows::Graphics::DirectX::Direct3D11::IDirect3DDevice;
 use windows::Win32::Foundation::HMODULE;
+use std::sync::atomic::{AtomicI32, Ordering};
+
+use windows::Win32::Graphics::Dxgi::{CreateDXGIFactory1, IDXGIAdapter, IDXGIFactory1};
 use windows::Win32::Graphics::Direct3D::{
-    D3D_DRIVER_TYPE_HARDWARE, D3D_FEATURE_LEVEL, D3D_FEATURE_LEVEL_9_1, D3D_FEATURE_LEVEL_9_2,
+    D3D_DRIVER_TYPE_HARDWARE, D3D_DRIVER_TYPE_UNKNOWN, D3D_FEATURE_LEVEL, D3D_FEATURE_LEVEL_9_1, D3D_FEATURE_LEVEL_9_2,
     D3D_FEATURE_LEVEL_9_3, D3D_FEATURE_LEVEL_10_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0,
     D3D_FEATURE_LEVEL_11_1,
 };
@@ -44,6 +47,24 @@ impl<T> SendDirectX<T> {
 #[allow(clippy::non_send_fields_in_send_ty)]
 unsafe impl<T> Send for SendDirectX<T> {}
 
+/// Номер адаптера, на котором создавать устройство. -1 — как раньше, выбор
+/// оставлен DXGI.
+///
+/// Статик, а не параметр: путь до `create_d3d_device` идёт через
+/// `start_free_threaded` и `Settings`, и протаскивать адаптер через всю
+/// цепочку ради одной настройки дороже, чем оно того стоит.
+static PREFERRED_ADAPTER: AtomicI32 = AtomicI32::new(-1);
+
+/// Задаёт адаптер для последующих захватов.
+///
+/// Нужно там, где `D3D11CreateDevice` на адаптере по умолчанию рушит процесс
+/// целиком: дефект драйвера портит кучу, перехватить это нельзя, и остаётся
+/// только не ходить туда второй раз.
+#[inline]
+pub fn set_preferred_adapter(index: Option<u32>) {
+    PREFERRED_ADAPTER.store(index.map_or(-1, |i| i as i32), Ordering::Relaxed);
+}
+
 /// Creates an `ID3D11Device` and an `ID3D11DeviceContext`.
 #[inline]
 pub fn create_d3d_device() -> Result<(ID3D11Device, ID3D11DeviceContext), Error> {
@@ -61,10 +82,31 @@ pub fn create_d3d_device() -> Result<(ID3D11Device, ID3D11DeviceContext), Error>
     let mut d3d_device = None;
     let mut feature_level = D3D_FEATURE_LEVEL::default();
     let mut d3d_device_context = None;
+
+    // При явно заданном адаптере тип драйвера ОБЯЗАН быть UNKNOWN — этого
+    // требует сам API, иначе вызов вернёт ошибку.
+    let chosen = PREFERRED_ADAPTER.load(Ordering::Relaxed);
+    let adapter: Option<IDXGIAdapter> = if chosen >= 0 {
+        unsafe {
+            CreateDXGIFactory1::<IDXGIFactory1>()
+                .ok()
+                .and_then(|f| f.EnumAdapters1(chosen as u32).ok())
+                .map(Into::into)
+        }
+    } else {
+        None
+    };
+    let driver_type = if adapter.is_some() {
+        D3D_DRIVER_TYPE_UNKNOWN
+    } else {
+        D3D_DRIVER_TYPE_HARDWARE
+    };
+    log::info!("wc: создаём устройство D3D11, адаптер {chosen} (-1 = по умолчанию)");
+
     unsafe {
         D3D11CreateDevice(
-            None,
-            D3D_DRIVER_TYPE_HARDWARE,
+            adapter.as_ref(),
+            driver_type,
             HMODULE::default(),
             D3D11_CREATE_DEVICE_BGRA_SUPPORT,
             Some(&feature_flags),

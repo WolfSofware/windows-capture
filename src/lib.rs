@@ -154,7 +154,7 @@ pub use windows::Graphics::Capture::GraphicsCaptureItem as WindowsCaptureGraphic
 /// Contains the main capture functionality, including the `WindowsCaptureHandler` trait and related types.
 pub mod capture;
 /// Internal module for Direct3D 11 related functionality.
-mod d3d11;
+pub mod d3d11;
 /// Contains the encoder functionality for encoding captured frames.
 pub mod encoder;
 /// Contains the `Frame` struct and related types for representing captured frames.
