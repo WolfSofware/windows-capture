@@ -51,15 +51,12 @@ pub fn create_d3d_device() -> Result<(ID3D11Device, ID3D11DeviceContext), Error>
     // The feature levels are listed in descending order of capability.
     // The highest feature level supported by the system is at index 0.
     // The lowest feature level supported by the system is at the last index.
-    let feature_flags = [
-        D3D_FEATURE_LEVEL_11_1,
-        D3D_FEATURE_LEVEL_11_0,
-        D3D_FEATURE_LEVEL_10_1,
-        D3D_FEATURE_LEVEL_10_0,
-        D3D_FEATURE_LEVEL_9_3,
-        D3D_FEATURE_LEVEL_9_2,
-        D3D_FEATURE_LEVEL_9_1,
-    ];
+    // Только 11_1 и 11_0. Всё, что ниже, ниже по коду всё равно отвергается
+    // проверкой feature_level < 11_0 — то есть пять уровней из семи
+    // запрашивались впустую, но заставляли драйвер пройти по своим путям
+    // совместимости. На драйвере NVIDIA 32.0.16.1062 D3D11CreateDevice в этом
+    // месте рушил кучу целиком (#66), поэтому лишнее убрано.
+    let feature_flags = [D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0];
 
     let mut d3d_device = None;
     let mut feature_level = D3D_FEATURE_LEVEL::default();
@@ -78,6 +75,7 @@ pub fn create_d3d_device() -> Result<(ID3D11Device, ID3D11DeviceContext), Error>
         )?;
     };
 
+    log::info!("wc: D3D11CreateDevice вернулся, уровень {:#x}", feature_level.0);
     if feature_level.0 < D3D_FEATURE_LEVEL_11_0.0 {
         return Err(Error::FeatureLevelNotSatisfied);
     }
