@@ -20,7 +20,7 @@ resolver = "2"
 
 [dependencies]
 # Windows API
-windows = { version = "0.61.3", features = [
+windows = { version = "0.62.2", features = [
     "Foundation_Metadata",
     "Foundation",
     "Graphics_Capture",
@@ -48,20 +48,20 @@ windows = { version = "0.61.3", features = [
     "Win32_UI_HiDpi",
     "Win32_Graphics_Dwm",
 ] }
-windows-future = "0.2.1"
+windows-future = "0.3.2"
 
 # Mutex optimization
-parking_lot = "0.12.4"
+parking_lot = "0.13.0"
 
 # Multithreading
-rayon = "1.10.0"
+rayon = "1.12.0"
 
 # Error handling
-thiserror = "2.0.12"
+thiserror = "2.0.21"
 
 [dev-dependencies]
-clap = { version = "4.5.40", features = ["derive"] }
-ctrlc = "3.4.7"
+clap = { version = "4.6.7", features = ["derive"] }
+ctrlc = "3.5.2"
 
 [package.metadata.docs.rs]
 default-target = "x86_64-pc-windows-msvc"

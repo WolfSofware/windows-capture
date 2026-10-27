@@ -93,7 +93,7 @@ impl ImageEncoder {
         };
 
         let stream = InMemoryRandomAccessStream::new()?;
-        let encoder = BitmapEncoder::CreateAsync(encoder, &stream)?.get()?;
+        let encoder = BitmapEncoder::CreateAsync(encoder, &stream)?.join()?;
 
         let pixelformat = match self.color_format {
             ColorFormat::Bgra8 => BitmapPixelFormat::Bgra8,
@@ -111,10 +111,10 @@ impl ImageEncoder {
             image_buffer,
         )?;
 
-        encoder.FlushAsync()?.get()?;
+        encoder.FlushAsync()?.join()?;
 
         let buffer = Buffer::Create(u32::try_from(stream.Size()?).unwrap())?;
-        stream.ReadAsync(&buffer, buffer.Capacity()?, InputStreamOptions::None)?.get()?;
+        stream.ReadAsync(&buffer, buffer.Capacity()?, InputStreamOptions::None)?.join()?;
 
         let data_reader = DataReader::FromBuffer(&buffer)?;
         let length = data_reader.UnconsumedBufferLength()?;
@@ -672,8 +672,8 @@ impl VideoEncoder {
 
         let path = &HSTRING::from(path.as_os_str().to_os_string());
 
-        let file = StorageFile::GetFileFromPathAsync(path)?.get()?;
-        let media_stream_output = file.OpenAsync(FileAccessMode::ReadWrite)?.get()?;
+        let file = StorageFile::GetFileFromPathAsync(path)?.join()?;
+        let media_stream_output = file.OpenAsync(FileAccessMode::ReadWrite)?.join()?;
 
         let transcode = media_transcoder
             .PrepareMediaStreamSourceTranscodeAsync(
@@ -681,7 +681,7 @@ impl VideoEncoder {
                 &media_stream_output,
                 &media_encoding_profile,
             )?
-            .get()?;
+            .join()?;
 
         let error_notify = Arc::new(AtomicBool::new(false));
         let transcode_thread = thread::spawn({
@@ -694,7 +694,7 @@ impl VideoEncoder {
                     error_notify.store(true, atomic::Ordering::Relaxed);
                 }
 
-                result?.get()?;
+                result?.join()?;
 
                 drop(media_transcoder);
 
@@ -897,7 +897,7 @@ impl VideoEncoder {
                 &stream,
                 &media_encoding_profile,
             )?
-            .get()?;
+            .join()?;
 
         let error_notify = Arc::new(AtomicBool::new(false));
         let transcode_thread = thread::spawn({
@@ -910,7 +910,7 @@ impl VideoEncoder {
                     error_notify.store(true, atomic::Ordering::Relaxed);
                 }
 
-                result?.get()?;
+                result?.join()?;
 
                 drop(media_transcoder);
 

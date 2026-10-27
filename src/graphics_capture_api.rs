@@ -217,7 +217,8 @@ impl GraphicsCaptureApi {
 
         // Preallocate a buffer for frame data to avoid reallocations.
         // The size is based on a 4K display (3840x2160) with 4 bytes per pixel (RGBA).
-        let mut buffer = vec![0u8; 3840 * 2160 * 4];
+        // Обработчик кадров в windows 0.62 — `Fn`, поэтому изменяемое состояние под мьютексом.
+        let buffer = Mutex::new(vec![0u8; 3840 * 2160 * 4]);
 
         // Indicates if the capture is closed
         let halt = Arc::new(AtomicBool::new(false));
@@ -262,7 +263,7 @@ impl GraphicsCaptureApi {
             let context = d3d_device_context.clone();
             let result_frame_pool = result;
 
-            let mut last_size = item.Size()?;
+            let last_size = Mutex::new(item.Size()?);
             let callback_frame_pool = callback;
             let direct3d_device_recreate = SendDirectX::new(direct3d_device.clone());
 
@@ -295,6 +296,7 @@ impl GraphicsCaptureApi {
                 unsafe { frame_texture.GetDesc(&mut desc) }
 
                 // Check if the size has been changed
+                let mut last_size = last_size.lock();
                 if frame_content_size.Width != last_size.Width
                     || frame_content_size.Height != last_size.Height
                 {
@@ -306,7 +308,7 @@ impl GraphicsCaptureApi {
                         frame_content_size,
                     )?;
 
-                    last_size = frame_content_size;
+                    *last_size = frame_content_size;
 
                     return Ok(());
                 }
@@ -317,6 +319,7 @@ impl GraphicsCaptureApi {
                 log::info!("wc: кадр пришёл, текстура {texture_width}x{texture_height}");
 
                 // Create a frame
+                let mut buffer = buffer.lock();
                 let mut frame = Frame::new(
                     &d3d_device_frame_pool,
                     frame_surface,

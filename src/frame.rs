@@ -192,7 +192,7 @@ impl<'a> Frame<'a> {
     ///
     /// A `FrameBuffer` containing the frame data.
     #[inline]
-    pub fn buffer(&mut self) -> Result<FrameBuffer, Error> {
+    pub fn buffer(&mut self) -> Result<FrameBuffer<'_>, Error> {
         // Texture Settings
         let texture_desc = D3D11_TEXTURE2D_DESC {
             Width: self.width,
@@ -267,7 +267,7 @@ impl<'a> Frame<'a> {
         start_height: u32,
         end_width: u32,
         end_height: u32,
-    ) -> Result<FrameBuffer, Error> {
+    ) -> Result<FrameBuffer<'_>, Error> {
         log::info!(
             "wc: обрезка {start_width},{start_height} .. {end_width},{end_height}              при кадре {}x{}",
             self.width,
@@ -371,7 +371,7 @@ impl<'a> Frame<'a> {
     ///
     /// A `FrameBuffer` containing the frame data without the title bar.
     #[inline]
-    pub fn buffer_without_title_bar(&mut self) -> Result<FrameBuffer, Error> {
+    pub fn buffer_without_title_bar(&mut self) -> Result<FrameBuffer<'_>, Error> {
         if let Some(title_bar_height) = self.title_bar_height {
             if title_bar_height >= self.height {
                 return Err(Error::InvalidTitleBarSize);
